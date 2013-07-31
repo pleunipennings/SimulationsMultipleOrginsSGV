@@ -1,0 +1,1 @@
+g++ -o HIVevolution HIVevolution.cpp -lgsl -lm -lgslcblas
