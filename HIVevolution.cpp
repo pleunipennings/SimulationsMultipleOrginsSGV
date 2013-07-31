@@ -5,6 +5,7 @@
  
  ***************************************************************************/
 
+
 //Plan to make simple model with real growth rates, a poisson distribution of offspring numbers and a real population size, a carrying capacity. 
 //At carrying capacity, the pop should behave like a WF model
 //The environment changes the R0 of the wild type but not of the resistant type. Resistance comes with a cost. 
@@ -12,6 +13,8 @@
 //Initially, I will set, Rwt1>1 (initally the WT is fit), Rwt2=0 (the environmental change kills all WT), mig=0 (no migration). We should recover H&P2005 results for Psgv, but in addition determine number of origins (softness). 
 //Next will look at Rwt2<1, but Rres2>1, which is more interesting. The prob of escape should be given by Uecker and H 2013. Not sure about Psoft and Phard | Pescape. 
 //Note: RES = MUT
+
+//Will change the code to have constant population size and see if the number of origins depends on ad or not. 
 
 
 // System wide headers:
