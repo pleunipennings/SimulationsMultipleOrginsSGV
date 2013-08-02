@@ -1,63 +1,95 @@
 ##write shell script. 
 
-data<-data.frame(Dres=rep(0,1000),Rwt=0, DDR=0,Pfix=0,Psoft2=0)
+setwd("/Users/pleunipennings/Documents/Research/HIV/LossAndRecoveryHIVDiversity/Simulations")
+system("./make_HIV")	
+setwd("/Users/pleunipennings/Documents/Research/HIV/LossAndRecoveryHIVDiversity/Simulations/SimResults")
+
+data<-data.frame(sb=rep(0,1000),sd=0, mu=0,Pfix=0,Psoft2=0)
 
 i=0
+#i=length(data$mu)
+seed = 7
+mut_on=1
+mu = 0.00002
+WantedNRuns = 5000
+Kmain = 10000
+sbvalues = c(0.2, 0.1, 0.05, 0.02) 
+sdvalues = c(0, 0.01, 0.02, 0.1, 0.2)
+#sbvalues=0.2
+#sdvalues=0
 
-for (Rwt in c(2, 4)){
-	RwtChar=substr(as.character(Rwt+0.00001),1,4)
-	for (Dres in seq(0,0.2,by=0.08)){
-		Rres= Rwt*(1-Dres)
-		RwtDrug = Rres*(1-0.05)
-		DDR = 1-RwtDrug/Rwt
-		#choose DDR so that a_b is same all the time!!
- 			
+plot(0:1,0:1,xlim=c(0,1.5*max(sdvalues)),ylim=c(0,1),col=0)
+points(0:1,c((mu*Kmain*2)/(mu*Kmain*2+1),(mu*Kmain*2)/(mu*Kmain*2+1)),t="l")
+
+for (sb in sbvalues){
+	for (sd in sdvalues){
 			i=i+1
-			print(paste("Dres",Dres,"; DDR",DDR))
+		seed = sample(1:10000,1)
+			data$Ne[i] = Kmain 
+			data$sd[i]=sd
+			data$sb[i]=sb
+			data$mu[i]=mu
+			data$theta[i] = Kmain*mu*2
+			data$alphad[i] = data$sd[i]*data$Ne[i]*2
+			data$alphab[i] = data$sb[i]*data$Ne[i]*2
+			data$predictedPfix[i] = 1- (1+(data$alphab[i]/(data$alphad[i]+1)))^-data$theta[i]
+			data$predictedPsoft2[i] = data$theta[i]/(data$theta[i]+1)
 			
-			outputfile=	paste("m_seed7mut_on0Rwt",RwtChar,".csv",sep="")	
+			nRuns = floor(WantedNRuns/data$predictedPfix[i])
+			
+			print(paste("sd",sd,"; sb",sb,"; nRuns",nRuns))
+			outputfile=	paste("m_seed",seed,"mut_on",mut_on,".csv",sep="")	
 			system(paste("rm",outputfile))	
 			
-			filetowrite="ShellScriptFixedN.sh"
+			filetowrite="../ShellScriptFixedN.sh"
 			write("#!/bin/bash",file=filetowrite)
-			write(paste("seed=7\nnRuns=500\nRwt=",Rwt,"\nDres=",Dres,"\nDDR=",DDR,"\nmu=0.000005\nmu_after_on=0\nmig=0\nKmain=10000\nKrefu=0\nV=1\n",sep=""),file=filetowrite,append=TRUE)
+			write(paste("seed=",seed,"\nnRuns=",nRuns,"\nsd=",sd,"\nsb=",sb,"\nmu=",mu,"\nmu_after_on=",mut_on,"\nKmain=",Kmain,"\n",sep=""),file=filetowrite,append=TRUE)
 			
 #Dres is the cost of the mutation. Should vary from 0 to Rwt (2 in this case)
 			write('echo "
 				  $seed 
 				  $nRuns
-				  $Rwt
-				  $Dres
-				  $DDR
+				  $sd
+				  $sb
 				  $mu
 				  $mu_after_on
-				  $mig
 				  $Kmain
-				  $Krefu
-				  $V
-				  " | ./HIVevolution',file=filetowrite,append=TRUE)
+				  " | ../HIVevolution',file=filetowrite,append=TRUE)
 			
-			system("chmod +x ./ShellScriptFixedN.sh")
-			system("./ShellScriptFixedN.sh")	
+			system("chmod +x ../ShellScriptFixedN.sh")
+			system("../ShellScriptFixedN.sh")	
 			read.csv(outputfile,header=FALSE,sep="\t")->X
-			data$Rwt[i]=Rwt
-			data$Dres[i]=Dres
-			data$DDR[i]=DDR
 			data$Pfix[i]=X[,which(X=="Fixprob")+1]
 			data$Psoft2[i]=1-X[,which(X=="BenAlleHomozygosity")+1]
-			data$PsoftRel[i]=data$Psoft2[i]/data$Pfix[i]
-			
+#data$PsoftRel[i]=data$Psoft2[i]/data$Pfix[i]
+		
+		print(data[i,])
+		
+		points(sd,data$Psoft2[i],pch=16,col=which(sbvalues==sb))
+
 		}}
 
 
-data<-data[data$Rwt>0,]
+#data<-data[data$mu>0,]
+#print(data[data$mu>0,])
+png("Pmultiorigins_SGV.png")
+
+plot(0:1,0:1,xlim=c(0,0.25),ylim=c(0,1),col=0,ylab="P_soft_2",xlab="cost of resistance allele")
+points(0:1,c((mu*Kmain*2)/(mu*Kmain*2+1),(mu*Kmain*2)/(mu*Kmain*2+1)),t="l")
+
+for (sb in sbvalues){
+	for (sd in sdvalues){
+		points(sd+(which(sbvalues==sb)*0.002),data$Psoft2[data$sb==sb&data$sd==sd],pch=16,col=which(sbvalues==sb),cex=2)}}
+legend(0.2,0.8,c(sbvalues),col=1:4,pch=16,cex=1,title="sb values")
+dev.off()
+
 library(lattice)
 
-png("ResultsPsoftRel.png")
-levelplot(PsoftRel~Rwt*DDR, data, cuts=8,main="relative prob multiple origin soft sweep")
-dev.off()
-png("ResultsPfix.png")
-levelplot(Pfix~Rwt*DDR, data, cuts=8,main="prob fix")
-dev.off()
+#png("ResultsPsoftRel.png")
+#levelplot(PsoftRel~sb*sd, data, cuts=8,main="relative prob multiple origin soft sweep")
+#dev.off()
+#png("ResultsPfix.png")
+#levelplot(Pfix~sb*sd, data, cuts=8,main="prob fix")
+#dev.off()
 
 
